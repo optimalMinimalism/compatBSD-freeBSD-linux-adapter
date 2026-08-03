@@ -1,0 +1,24 @@
+# Editor and operating-system noise
+*~
+*.swp
+*.swo
+.DS_Store
+
+# Local development output
+/build/
+/dist/
+/tmp/
+*.log
+
+# Generated runtime roots and mutable state must never enter Git
+/rootfs/
+runtimes/*/rootfs/
+state/
+
+# Local configuration and secrets
+.env
+*.local.conf
+
+# Test output
+/tests/output/
+/tests/tmp/
