@@ -1,0 +1,42 @@
+flowchart TB
+    subgraph Host["FreeBSD host"]
+        Source["$PROJECT_ROOT<br/>source repository"]
+        Config["/usr/local/etc/compatbsd<br/>system configuration"]
+        Controller["/usr/local/bin/compatbsd<br/>installed controller"]
+        Helpers["/usr/local/libexec/compatbsd<br/>installed helpers"]
+        RuntimeStorage["/compat/compatbsd/runtimes<br/>generated Linux root filesystems"]
+        MachineState["/var/db/compatbsd<br/>machine state"]
+        Logs["/var/log/compatbsd<br/>logs"]
+        UserState["$HOME/.local/share/compatbsd<br/>per-user application data"]
+
+        subgraph BackendBoundary["Execution backend"]
+            Chroot["chroot backend"]
+            Jail["jail backend"]
+        end
+
+        subgraph Runtime["Selected Linux runtime"]
+            Rootfs["Linux root filesystem"]
+            PrivateHome["Private application home"]
+            AppProcess["Application process"]
+        end
+
+        Linuxulator["FreeBSD Linuxulator"]
+        Kernel["FreeBSD kernel"]
+    end
+
+    Source --> Controller
+    Source --> Helpers
+    Controller --> Config
+    Controller --> MachineState
+    Controller --> Logs
+    Controller --> UserState
+    Controller --> BackendBoundary
+
+    Chroot --> Rootfs
+    Jail --> Rootfs
+    RuntimeStorage --> Rootfs
+    UserState --> PrivateHome
+    PrivateHome --> AppProcess
+    Rootfs --> AppProcess
+    AppProcess --> Linuxulator
+    Linuxulator --> Kernel

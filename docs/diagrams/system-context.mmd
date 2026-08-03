@@ -1,0 +1,22 @@
+flowchart TB
+    User["User"]
+    Admin["Administrator<br/>privileged host operations"]
+    Desktop["Host desktop session"]
+    RuntimeRepo["Linux runtime repositories"]
+    AppRepo["Official application repositories"]
+
+    subgraph Host["FreeBSD host"]
+        CompatBSD["CompatBSD"]
+        Linuxulator["FreeBSD Linuxulator"]
+        Kernel["FreeBSD kernel"]
+        Hardware["Hardware"]
+    end
+
+    User -->|"Generic CLI commands"| CompatBSD
+    CompatBSD -->|"Requests controlled privileged operations"| Admin
+    CompatBSD <-->|"Display, audio and D-Bus integration"| Desktop
+    CompatBSD -->|"Runtime packages and metadata"| RuntimeRepo
+    CompatBSD -->|"Application packages and metadata"| AppRepo
+    CompatBSD -->|"Launches Linux processes"| Linuxulator
+    Linuxulator -->|"Linux ABI compatibility"| Kernel
+    Kernel --> Hardware

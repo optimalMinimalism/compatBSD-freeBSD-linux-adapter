@@ -1,0 +1,58 @@
+flowchart TB
+    User["User / CLI"]
+
+    subgraph Core["CompatBSD core controller"]
+        Dispatcher["Command dispatcher"]
+        Config["Configuration loader"]
+        Doctor["Host and runtime validation"]
+        State["State tracking"]
+        Logging["Logging and diagnostics"]
+    end
+
+    subgraph Definitions["Pluggable definitions"]
+        Runtime["Runtime plugin"]
+        Backend["Execution backend"]
+        App["Application manifest"]
+    end
+
+    Mounts["Mount manager"]
+
+    subgraph Bridges["Host-integration bridges"]
+        Display["Display"]
+        DBus["D-Bus"]
+        Audio["Audio"]
+        GPU["GPU"]
+        Devices["Devices"]
+        Network["Network"]
+    end
+
+    subgraph RuntimeEnv["Generated Linux runtime"]
+        Rootfs["Linux root filesystem"]
+        Loader["Linux ELF loader"]
+        Libc["Linux libc and shared libraries"]
+        LinuxApp["Linux application process"]
+    end
+
+    Linuxulator["FreeBSD Linuxulator"]
+    Kernel["FreeBSD kernel"]
+
+    User --> Dispatcher
+    Dispatcher --> Config
+    Dispatcher --> Doctor
+    Dispatcher --> State
+    Dispatcher --> Logging
+    Dispatcher --> Runtime
+    Dispatcher --> Backend
+    Dispatcher --> App
+
+    Backend --> Mounts
+    Backend --> Bridges
+    Runtime --> Rootfs
+    App --> LinuxApp
+
+    Rootfs --> Loader
+    Loader --> Libc
+    Loader --> LinuxApp
+
+    LinuxApp -->|"Linux ABI system calls"| Linuxulator
+    Linuxulator --> Kernel

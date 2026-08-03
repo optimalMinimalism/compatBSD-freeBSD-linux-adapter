@@ -1,0 +1,18 @@
+stateDiagram-v2
+    [*] --> Undefined
+
+    Undefined --> Created: runtime create
+    Created --> Mounted: runtime mount
+    Mounted --> Active: application start
+
+    Active --> Mounted: application exits or stops
+    Mounted --> Created: runtime unmount
+    Created --> Undefined: runtime destroy
+
+    Created --> Created: inspect or verify
+    Mounted --> Mounted: repeated mount is idempotent
+    Active --> Active: status or logs
+
+    Active --> CleanupRequired: abnormal launcher failure
+    CleanupRequired --> Mounted: process cleanup completed
+    CleanupRequired --> Created: owned resources removed

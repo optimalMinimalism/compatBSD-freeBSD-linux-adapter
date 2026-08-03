@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor User
+    participant CLI as CompatBSD CLI
+    participant App as Application manifest
+    participant Runtime as Runtime plugin
+    participant Backend as Execution backend
+    participant Mounts as Mount manager
+    participant Bridges as Host bridges
+    participant Rootfs as Linux rootfs
+    participant Loader as ELF loader
+    participant Linuxulator as Linuxulator
+    participant Kernel as FreeBSD kernel
+
+    User->>CLI: compatbsd app run <application>
+    CLI->>App: Load application requirements
+    App-->>CLI: Runtime, executable and bridge requirements
+
+    CLI->>Runtime: Validate selected runtime
+    Runtime->>Rootfs: Check release, loader and libc
+    Rootfs-->>Runtime: Verification result
+    Runtime-->>CLI: Runtime ready
+
+    CLI->>Backend: Prepare execution
+    Backend->>Mounts: Prepare controlled mounts
+    Mounts-->>Backend: Owned mount records
+
+    Backend->>Bridges: Prepare required host integrations
+    Bridges-->>Backend: Environment and resource access
+
+    Backend->>Rootfs: Execute as the requesting user
+    Rootfs->>Loader: Load application ELF
+    Loader->>Rootfs: Resolve libraries and symbol versions
+    Loader->>Linuxulator: Start Linux process
+
+    loop Application execution
+        Linuxulator->>Kernel: Handle Linux ABI system call
+        Kernel-->>Linuxulator: Kernel result
+    end
+
+    Rootfs-->>Backend: Exit status, stdout and stderr
+    Backend->>Bridges: Clean up owned bridge resources
+    Backend->>Mounts: Clean up owned mounts
+    Backend-->>CLI: Execution result
+    CLI-->>User: Status and diagnostics
