@@ -3,6 +3,10 @@ set -eu
 
 COMPATBSD_VERSION="0.1.0-dev"
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+LIBEXEC_DIR="$PROJECT_ROOT/libexec/compatbsd"
+
 print_version() {
     printf 'CompatBSD %s\n' "$COMPATBSD_VERSION"
 }
@@ -14,14 +18,30 @@ CompatBSD - FreeBSD-native Linux application compatibility controller
 Usage:
     compatbsd version
     compatbsd help
+    compatbsd doctor
 
 Commands:
     version    Print the CompatBSD controller version.
     help       Show this help text.
+    doctor     Inspect the FreeBSD host and Linuxulator state.
 
-Milestone 1 is design-only. Runtime creation, mounts, Linuxulator changes,
-application installation, and application execution are not implemented.
+Milestone 2 implements read-only host inspection.
+
+Runtime creation, CompatBSD mounts, runtime bootstrapping, application
+installation, and application execution are not implemented yet.
 USAGE
+}
+
+run_doctor() {
+    doctor_module="$LIBEXEC_DIR/doctor"
+
+    if [ ! -r "$doctor_module" ]; then
+        printf 'compatbsd: doctor module not found: %s\n' "$doctor_module" >&2
+        exit 70
+    fi
+
+    . "$doctor_module"
+    compatbsd_doctor
 }
 
 main() {
@@ -47,6 +67,13 @@ main() {
                 exit 64
             fi
             print_help
+            ;;
+        doctor)
+            if [ "$#" -ne 0 ]; then
+                printf 'compatbsd: doctor accepts no arguments\n' >&2
+                exit 64
+            fi
+            run_doctor
             ;;
         *)
             printf 'compatbsd: unknown command: %s\n' "$command_name" >&2

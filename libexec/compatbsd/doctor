@@ -1,0 +1,166 @@
+#!/bin/sh
+
+DOCTOR_OK=0
+DOCTOR_WARN=0
+DOCTOR_FAIL=0
+
+doctor_ok()
+{
+    DOCTOR_OK=$((DOCTOR_OK + 1))
+    printf 'OK    %s\n' "$1"
+}
+
+doctor_warn()
+{
+    DOCTOR_WARN=$((DOCTOR_WARN + 1))
+    printf 'WARN  %s\n' "$1"
+}
+
+doctor_fail()
+{
+    DOCTOR_FAIL=$((DOCTOR_FAIL + 1))
+    printf 'FAIL  %s\n' "$1"
+}
+
+check_freebsd()
+{
+    os=$(uname -s)
+
+    if [ "$os" = "FreeBSD" ]; then
+        doctor_ok "Host operating system: FreeBSD $(uname -r)"
+    else
+        doctor_fail "Host operating system: expected FreeBSD, found $os"
+    fi
+}
+
+check_architecture()
+{
+    architecture=$(uname -m)
+
+    if [ "$architecture" = "amd64" ]; then
+        doctor_ok "Host architecture: amd64"
+    else
+        doctor_fail "Host architecture: expected amd64, found $architecture"
+    fi
+}
+
+check_kernel_userland_abi()
+{
+    kernel_abi=$(uname -K)
+    userland_abi=$(uname -U)
+
+    if [ "$kernel_abi" = "$userland_abi" ]; then
+        doctor_ok "Kernel/userland ABI: $kernel_abi"
+    else
+        doctor_warn "Kernel ABI $kernel_abi differs from userland ABI $userland_abi"
+    fi
+}
+
+check_linuxulator_modules()
+{
+    missing=""
+
+    for module in linux.ko linux64.ko linux_common.ko; do
+        if ! kldstat | grep -q "[[:space:]]$module\$"; then
+            missing="$missing $module"
+        fi
+    done
+
+    if [ -z "$missing" ]; then
+        doctor_ok "Linuxulator kernel modules: linux.ko linux64.ko linux_common.ko"
+    else
+        doctor_fail "Linuxulator kernel modules missing:$missing"
+    fi
+}
+
+check_linux_osrelease()
+{
+    if osrelease=$(sysctl -n compat.linux.osrelease 2>/dev/null); then
+        doctor_ok "Linuxulator reported kernel release: $osrelease"
+    else
+        doctor_fail "Linuxulator sysctl compat.linux.osrelease unavailable"
+    fi
+}
+
+check_compat_linux()
+{
+    if [ -d /compat/linux ]; then
+        doctor_ok "Existing FreeBSD Linux compatibility root: /compat/linux"
+    else
+        doctor_warn "Existing /compat/linux compatibility root not found"
+    fi
+}
+
+check_linux_elf()
+{
+    if [ ! -x /compat/linux/bin/true ]; then
+        doctor_warn "Linux ELF execution not tested: /compat/linux/bin/true unavailable"
+        return
+    fi
+
+    if /compat/linux/bin/true >/dev/null 2>&1; then
+        doctor_ok "Linux ELF execution"
+    else
+        doctor_fail "Linux ELF execution"
+    fi
+}
+
+check_mount()
+{
+    mountpoint=$1
+    filesystem=$2
+
+    if mount | awk -v mp="$mountpoint" -v fs="$filesystem" '
+        $2 == "on" && $3 == mp && $4 == "(" fs "," { found=1 }
+        $2 == "on" && $3 == mp && $4 == "(" fs ")" { found=1 }
+        END { exit !found }
+    '; then
+        doctor_ok "$filesystem mounted on $mountpoint"
+    else
+        doctor_warn "$filesystem not detected on $mountpoint"
+    fi
+}
+
+check_tool()
+{
+    tool=$1
+
+    if path=$(command -v "$tool" 2>/dev/null); then
+        doctor_ok "Host tool: $tool ($path)"
+    else
+        doctor_fail "Required host tool missing: $tool"
+    fi
+}
+
+compatbsd_doctor()
+{
+    printf 'CompatBSD host doctor\n'
+    printf '%s\n' '---------------------'
+
+    check_freebsd
+    check_architecture
+    check_kernel_userland_abi
+    check_linuxulator_modules
+    check_linux_osrelease
+    check_compat_linux
+    check_linux_elf
+
+    check_mount /compat/linux/proc linprocfs
+    check_mount /compat/linux/sys linsysfs
+    check_mount /compat/linux/dev devfs
+    check_mount /compat/linux/dev/fd fdescfs
+    check_mount /compat/linux/dev/shm tmpfs
+
+    for tool in uname sysctl kldstat mount file brandelf readelf; do
+        check_tool "$tool"
+    done
+
+    printf '%s\n' '---------------------'
+    printf 'Summary: %d OK, %d WARN, %d FAIL\n' "$DOCTOR_OK" "$DOCTOR_WARN" "$DOCTOR_FAIL"
+
+    if [ "$DOCTOR_FAIL" -gt 0 ]; then
+        return 1
+    fi
+
+    return 0
+}
